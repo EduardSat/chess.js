@@ -563,7 +563,7 @@ export class Chess {
     }
   }
 
-  load(fen: string, keepHeaders = false) {
+  load(fen: string, keepHeaders = false, freeMode: boolean) {
     let tokens = fen.split(/\s+/)
 
     // append commonly omitted fen tokens
@@ -573,10 +573,11 @@ export class Chess {
     }
 
     tokens = fen.split(/\s+/)
-
-    const { ok, error } = validateFen(fen)
-    if (!ok) {
-      throw new Error(error)
+    if (!freeMode) {
+      const { ok, error } = validateFen(fen)
+      if (!ok) {
+        throw new Error(error)
+      }  
     }
 
     const position = tokens[0]
