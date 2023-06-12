@@ -563,7 +563,7 @@ export class Chess {
     }
   }
 
-  load(fen: string, keepHeaders = false, freeMode: boolean) {
+  load(fen: string, keepHeaders = false, freeMode?: boolean) {
     let tokens = fen.split(/\s+/)
 
     // append commonly omitted fen tokens
