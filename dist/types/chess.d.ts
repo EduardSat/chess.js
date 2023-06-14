@@ -162,10 +162,11 @@ export declare class Chess {
         square?: Square;
         piece?: PieceSymbol;
     }): Move[];
-    _moves({ legal, piece, square, }?: {
+    _moves({ legal, piece, square, usTurn }?: {
         legal?: boolean;
         piece?: PieceSymbol;
         square?: Square;
+        usTurn?: 'w' | 'b';
     }): InternalMove[];
     move(move: string | {
         from: string;

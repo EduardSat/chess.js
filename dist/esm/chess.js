@@ -847,11 +847,11 @@ export class Chess {
             return moves.map((move) => this._moveToSan(move, moves));
         }
     }
-    _moves({ legal = undefined, piece = undefined, square = undefined, } = {}) {
+    _moves({ legal = undefined, piece = undefined, square = undefined, usTurn = undefined } = {}) {
         const forSquare = square ? square.toLowerCase() : undefined;
         const forPiece = piece?.toLowerCase();
         const moves = [];
-        const us = this._turn;
+        const us = usTurn ? usTurn : this._turn;
         const them = swapColor(us);
         let firstSquare = Ox88.a8;
         let lastSquare = Ox88.h1;

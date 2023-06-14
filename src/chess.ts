@@ -1114,16 +1114,18 @@ export class Chess {
     legal = undefined,
     piece = undefined,
     square = undefined,
+    usTurn = undefined
   }: {
     legal?: boolean
     piece?: PieceSymbol
-    square?: Square
+    square?: Square,
+    usTurn?: 'w' | 'b'
   } = {}) {
     const forSquare = square ? (square.toLowerCase() as Square) : undefined
     const forPiece = piece?.toLowerCase()
 
     const moves: InternalMove[] = []
-    const us = this._turn
+    const us = usTurn ? usTurn : this._turn
     const them = swapColor(us)
 
     let firstSquare = Ox88.a8
