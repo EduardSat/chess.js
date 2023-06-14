@@ -1045,7 +1045,7 @@ export class Chess {
 
   moves({ square, piece }: { square: Square; piece: PieceSymbol }): string[]
 
-  moves({ verbose, square }: { verbose: true; square?: Square }): Move[]
+  moves({ verbose, square, legal }: { verbose: true; square?: Square, legal: false }): Move[]
   moves({ verbose, square }: { verbose: false; square?: Square }): string[]
   moves({
     verbose,
