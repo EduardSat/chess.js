@@ -839,7 +839,7 @@ export class Chess {
         return this.isCheckmate() || this.isStalemate() || this.isDraw();
     }
     moves({ verbose = false, square = undefined, piece = undefined, legal = false } = {}) {
-        const moves = this._moves({ square, piece, legal });
+        const moves = this._moves({ legal, square, piece });
         if (verbose) {
             return moves.map((move) => this._makePretty(move));
         }
@@ -847,7 +847,7 @@ export class Chess {
             return moves.map((move) => this._moveToSan(move, moves));
         }
     }
-    _moves({ legal = true, piece = undefined, square = undefined, } = {}) {
+    _moves({ legal = undefined, piece = undefined, square = undefined, } = {}) {
         const forSquare = square ? square.toLowerCase() : undefined;
         const forPiece = piece?.toLowerCase();
         const moves = [];

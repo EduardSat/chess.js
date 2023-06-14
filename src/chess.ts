@@ -1101,7 +1101,7 @@ export class Chess {
     piece = undefined,
     legal = false
   }: { verbose?: boolean; square?: Square; piece?: PieceSymbol, legal?: boolean } = {}) {
-    const moves = this._moves({ square, piece, legal })
+    const moves = this._moves({ legal, square, piece })
 
     if (verbose) {
       return moves.map((move) => this._makePretty(move))
@@ -1111,7 +1111,7 @@ export class Chess {
   }
 
   _moves({
-    legal = true,
+    legal = undefined,
     piece = undefined,
     square = undefined,
   }: {
