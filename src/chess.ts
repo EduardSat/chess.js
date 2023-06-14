@@ -1099,8 +1099,9 @@ export class Chess {
     verbose = false,
     square = undefined,
     piece = undefined,
-  }: { verbose?: boolean; square?: Square; piece?: PieceSymbol } = {}) {
-    const moves = this._moves({ square, piece })
+    legal = false
+  }: { verbose?: boolean; square?: Square; piece?: PieceSymbol, legal?: boolean } = {}) {
+    const moves = this._moves({ square, piece, legal })
 
     if (verbose) {
       return moves.map((move) => this._makePretty(move))
