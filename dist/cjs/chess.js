@@ -977,16 +977,20 @@ class Chess {
         if (!legal || this._kings[us] === -1) {
             return moves;
         }
+        return moves;
         // filter out illegal moves
-        const legalMoves = [];
-        for (let i = 0, len = moves.length; i < len; i++) {
-            this._makeMove(moves[i]);
-            if (!this._isKingAttacked(us)) {
-                legalMoves.push(moves[i]);
-            }
-            this._undoMove();
-        }
-        return legalMoves;
+        // const legalMoves = []
+        /*
+         *for (let i = 0, len = moves.length; i < len; i++) {
+         *  this._makeMove(moves[i])
+         *  if (!this._isKingAttacked(us)) {
+         *    legalMoves.push(moves[i])
+         *  }
+         *  this._undoMove()
+         *}
+         *
+         * return legalMoves
+         */
     }
     move(move, { strict = false } = {}) {
         /*
