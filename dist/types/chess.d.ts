@@ -162,6 +162,17 @@ export declare class Chess {
         square?: Square;
         piece?: PieceSymbol;
     }): Move[];
+    pseudoMoves({ square, piece, legal }?: {
+        square?: Square;
+        piece?: PieceSymbol;
+        legal?: boolean;
+    }): Move[];
+    _pseudoMoves({ legal, piece, square, usTurn }?: {
+        legal?: boolean;
+        piece?: PieceSymbol;
+        square?: Square;
+        usTurn?: 'w' | 'b';
+    }): InternalMove[];
     _moves({ legal, piece, square, usTurn }?: {
         legal?: boolean;
         piece?: PieceSymbol;
