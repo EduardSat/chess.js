@@ -842,8 +842,8 @@ class Chess {
     isGameOver() {
         return this.isCheckmate() || this.isStalemate() || this.isDraw();
     }
-    moves({ verbose = false, square = undefined, piece = undefined, legal = false } = {}) {
-        const moves = this._moves({ legal, square, piece });
+    moves({ verbose = false, square = undefined, piece = undefined } = {}) {
+        const moves = this._moves({ square, piece });
         if (verbose) {
             return moves.map((move) => this._makePretty(move));
         }
@@ -996,11 +996,11 @@ class Chess {
          * return legalMoves
          */
     }
-    _moves({ legal = undefined, piece = undefined, square = undefined, usTurn = undefined } = {}) {
+    _moves({ legal = true, piece = undefined, square = undefined, } = {}) {
         const forSquare = square ? square.toLowerCase() : undefined;
         const forPiece = piece?.toLowerCase();
         const moves = [];
-        const us = usTurn ? usTurn : this._turn;
+        const us = this._turn;
         const them = swapColor(us);
         let firstSquare = Ox88.a8;
         let lastSquare = Ox88.h1;
@@ -1122,6 +1122,7 @@ class Chess {
         if (!legal || this._kings[us] === -1) {
             return moves;
         }
+        // filter out illegal moves
         const legalMoves = [];
         for (let i = 0, len = moves.length; i < len; i++) {
             this._makeMove(moves[i]);

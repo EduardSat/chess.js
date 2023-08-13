@@ -1098,10 +1098,9 @@ export class Chess {
   moves({
     verbose = false,
     square = undefined,
-    piece = undefined,
-    legal = false
+    piece = undefined
   }: { verbose?: boolean; square?: Square; piece?: PieceSymbol, legal?: boolean } = {}) {
-    const moves = this._moves({ legal, square, piece })
+    const moves = this._moves({ square, piece })
 
     if (verbose) {
       return moves.map((move) => this._makePretty(move))
@@ -1319,21 +1318,19 @@ export class Chess {
   }
 
   _moves({
-    legal = undefined,
+    legal = true,
     piece = undefined,
     square = undefined,
-    usTurn = undefined
   }: {
     legal?: boolean
     piece?: PieceSymbol
-    square?: Square,
-    usTurn?: 'w' | 'b'
+    square?: Square
   } = {}) {
     const forSquare = square ? (square.toLowerCase() as Square) : undefined
     const forPiece = piece?.toLowerCase()
 
     const moves: InternalMove[] = []
-    const us = usTurn ? usTurn : this._turn
+    const us = this._turn
     const them = swapColor(us)
 
     let firstSquare = Ox88.a8
@@ -1501,8 +1498,10 @@ export class Chess {
     if (!legal || this._kings[us] === -1) {
       return moves
     }
-    
+
+    // filter out illegal moves
     const legalMoves = []
+
     for (let i = 0, len = moves.length; i < len; i++) {
       this._makeMove(moves[i])
       if (!this._isKingAttacked(us)) {
@@ -1510,6 +1509,7 @@ export class Chess {
       }
       this._undoMove()
     }
+
     return legalMoves
   }
 
