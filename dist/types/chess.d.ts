@@ -81,8 +81,10 @@ export declare class Chess {
     private _history;
     private _comments;
     private _castling;
+    private _positionCounts;
     constructor(fen?: string);
     clear(keepHeaders?: boolean): void;
+    private _trimFen;
     removeHeader(key: string): void;
     load(fen: string, keepHeaders?: boolean, freeMode?: boolean): void;
     fen(): string;
@@ -93,6 +95,7 @@ export declare class Chess {
         type: PieceSymbol;
         color: Color;
     }, square: Square): boolean;
+    private _put;
     remove(square: Square): Piece;
     _updateCastlingRights(): void;
     _updateEnPassantSquare(): void;
@@ -104,6 +107,7 @@ export declare class Chess {
     isCheckmate(): boolean;
     isStalemate(): boolean;
     isInsufficientMaterial(): boolean;
+    private _getRepetitionCount;
     isThreefoldRepetition(): boolean;
     isDraw(): boolean;
     isGameOver(): boolean;
@@ -118,10 +122,9 @@ export declare class Chess {
         square: Square;
         piece: PieceSymbol;
     }): string[];
-    moves({ verbose, square, legal }: {
+    moves({ verbose, square }: {
         verbose: true;
         square?: Square;
-        legal: false;
     }): Move[];
     moves({ verbose, square }: {
         verbose: false;

@@ -538,6 +538,7 @@ export class Chess {
   private _history: History[] = []
   private _comments: Record<string, string> = {}
   private _castling: Record<Color, number> = { w: 0, b: 0 }
+  private _positionCounts: Record<string, number> = {}
 
   constructor(fen = DEFAULT_POSITION) {
     this.load(fen)
@@ -555,6 +556,29 @@ export class Chess {
     this._comments = {}
     this._header = keepHeaders ? this._header : {}
     this._updateSetup(this.fen())
+    /*
+     * Instantiate a proxy that keeps track of position occurrence counts for the purpose
+     * of repetition checking. The getter and setter methods automatically handle trimming
+     * irrelevent information from the fen, initialising new positions, and removing old
+     * positions from the record if their counts are reduced to 0.
+     */
+    this._positionCounts = new Proxy({} as Record<string, number>, {
+      get: (target, position: string) =>
+        position === 'length'
+          ? Object.keys(target).length // length for unit testing
+          : target?.[this._trimFen(position)] || 0,
+      set: (target, position: string, count: number) => {
+        const trimmedFen = this._trimFen(position)
+        if (count === 0) delete target[trimmedFen]
+        else target[trimmedFen] = count
+        return true
+      },
+    })
+  }
+
+  private _trimFen(fen: string): string {
+    // remove last two fields in FEN string as they're not needed when checking for repetition
+    return fen.split(' ').slice(0, 4).join(' ')
   }
 
   removeHeader(key: string) {
@@ -752,6 +776,16 @@ export class Chess {
   }
 
   put({ type, color }: { type: PieceSymbol; color: Color }, square: Square) {
+    if (this._put({ type, color }, square)) {
+      this._updateCastlingRights()
+      this._updateEnPassantSquare()
+      this._updateSetup(this.fen())
+      return true
+    } 
+    return false
+  }
+
+  private _put({ type, color }: { type: PieceSymbol; color: Color }, square: Square) {
     // check for piece
     if (SYMBOLS.indexOf(type.toLowerCase()) === -1) {
       return false
@@ -772,15 +806,18 @@ export class Chess {
       return false
     }
 
+    const currentPieceOnSquare = this._board[sq]
+
+    // if one of the kings will be replaced by the piece from args, set the `_kings` respective entry to `EMPTY`
+    if (currentPieceOnSquare && currentPieceOnSquare.type === KING) {
+      this._kings[currentPieceOnSquare.color] = EMPTY
+    }
+
     this._board[sq] = { type: type as PieceSymbol, color: color as Color }
 
     if (type === KING) {
       this._kings[color] = sq
     }
-
-    this._updateCastlingRights()
-    this._updateEnPassantSquare()
-    this._updateSetup(this.fen())
 
     return true
   }
@@ -990,40 +1027,12 @@ export class Chess {
     return false
   }
 
-  isThreefoldRepetition() {
-    const moves = []
-    const positions: Record<string, number> = {}
-    let repetition = false
+  private _getRepetitionCount() {
+    return this._positionCounts[this.fen()]
+  }
 
-    while (true) {
-      const move = this._undoMove()
-      if (!move) break
-      moves.push(move)
-    }
-
-    while (true) {
-      /*
-       * remove the last two fields in the FEN string, they're not needed when
-       * checking for draw by rep
-       */
-      const fen = this.fen().split(' ').slice(0, 4).join(' ')
-
-      // has the position occurred three or move times
-      positions[fen] = fen in positions ? positions[fen] + 1 : 1
-      if (positions[fen] >= 3) {
-        repetition = true
-      }
-
-      const move = moves.pop()
-
-      if (!move) {
-        break
-      } else {
-        this._makeMove(move)
-      }
-    }
-
-    return repetition
+  isThreefoldRepetition(): boolean {
+    return this._getRepetitionCount() >= 3
   }
 
   isDraw() {
@@ -1045,7 +1054,7 @@ export class Chess {
 
   moves({ square, piece }: { square: Square; piece: PieceSymbol }): string[]
 
-  moves({ verbose, square, legal }: { verbose: true; square?: Square, legal: false }): Move[]
+  moves({ verbose, square }: { verbose: true; square?: Square }): Move[]
   moves({ verbose, square }: { verbose: false; square?: Square }): string[]
   moves({
     verbose,
@@ -1098,8 +1107,8 @@ export class Chess {
   moves({
     verbose = false,
     square = undefined,
-    piece = undefined
-  }: { verbose?: boolean; square?: Square; piece?: PieceSymbol, legal?: boolean } = {}) {
+    piece = undefined,
+  }: { verbose?: boolean; square?: Square; piece?: PieceSymbol } = {}) {
     const moves = this._moves({ square, piece })
 
     if (verbose) {
@@ -1567,7 +1576,7 @@ export class Chess {
     const prettyMove = this._makePretty(moveObj)
 
     this._makeMove(moveObj)
-
+    this._positionCounts[prettyMove.after]++
     return prettyMove
   }
 
@@ -1681,7 +1690,12 @@ export class Chess {
 
   undo() {
     const move = this._undoMove()
-    return move ? this._makePretty(move) : null
+    if (move) {
+      const prettyMove = this._makePretty(move)
+      this._positionCounts[prettyMove.after]--
+      return prettyMove
+    }    
+    return null
   }
 
   private _undoMove() {
@@ -2105,6 +2119,7 @@ export class Chess {
         // reset the end of game marker if making a valid move
         result = ''
         this._makeMove(move)
+        this._positionCounts[this.fen()]++
       }
     }
 

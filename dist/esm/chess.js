@@ -421,6 +421,7 @@ export class Chess {
     _history = [];
     _comments = {};
     _castling = { w: 0, b: 0 };
+    _positionCounts = {};
     constructor(fen = DEFAULT_POSITION) {
         this.load(fen);
     }
@@ -436,6 +437,29 @@ export class Chess {
         this._comments = {};
         this._header = keepHeaders ? this._header : {};
         this._updateSetup(this.fen());
+        /*
+         * Instantiate a proxy that keeps track of position occurrence counts for the purpose
+         * of repetition checking. The getter and setter methods automatically handle trimming
+         * irrelevent information from the fen, initialising new positions, and removing old
+         * positions from the record if their counts are reduced to 0.
+         */
+        this._positionCounts = new Proxy({}, {
+            get: (target, position) => position === 'length'
+                ? Object.keys(target).length // length for unit testing
+                : target?.[this._trimFen(position)] || 0,
+            set: (target, position, count) => {
+                const trimmedFen = this._trimFen(position);
+                if (count === 0)
+                    delete target[trimmedFen];
+                else
+                    target[trimmedFen] = count;
+                return true;
+            },
+        });
+    }
+    _trimFen(fen) {
+        // remove last two fields in FEN string as they're not needed when checking for repetition
+        return fen.split(' ').slice(0, 4).join(' ');
     }
     removeHeader(key) {
         if (key in this._header) {
@@ -602,6 +626,15 @@ export class Chess {
         return this._board[Ox88[square]] || false;
     }
     put({ type, color }, square) {
+        if (this._put({ type, color }, square)) {
+            this._updateCastlingRights();
+            this._updateEnPassantSquare();
+            this._updateSetup(this.fen());
+            return true;
+        }
+        return false;
+    }
+    _put({ type, color }, square) {
         // check for piece
         if (SYMBOLS.indexOf(type.toLowerCase()) === -1) {
             return false;
@@ -616,13 +649,15 @@ export class Chess {
             !(this._kings[color] == EMPTY || this._kings[color] == sq)) {
             return false;
         }
+        const currentPieceOnSquare = this._board[sq];
+        // if one of the kings will be replaced by the piece from args, set the `_kings` respective entry to `EMPTY`
+        if (currentPieceOnSquare && currentPieceOnSquare.type === KING) {
+            this._kings[currentPieceOnSquare.color] = EMPTY;
+        }
         this._board[sq] = { type: type, color: color };
         if (type === KING) {
             this._kings[color] = sq;
         }
-        this._updateCastlingRights();
-        this._updateEnPassantSquare();
-        this._updateSetup(this.fen());
         return true;
     }
     remove(square) {
@@ -798,36 +833,11 @@ export class Chess {
         }
         return false;
     }
+    _getRepetitionCount() {
+        return this._positionCounts[this.fen()];
+    }
     isThreefoldRepetition() {
-        const moves = [];
-        const positions = {};
-        let repetition = false;
-        while (true) {
-            const move = this._undoMove();
-            if (!move)
-                break;
-            moves.push(move);
-        }
-        while (true) {
-            /*
-             * remove the last two fields in the FEN string, they're not needed when
-             * checking for draw by rep
-             */
-            const fen = this.fen().split(' ').slice(0, 4).join(' ');
-            // has the position occurred three or move times
-            positions[fen] = fen in positions ? positions[fen] + 1 : 1;
-            if (positions[fen] >= 3) {
-                repetition = true;
-            }
-            const move = moves.pop();
-            if (!move) {
-                break;
-            }
-            else {
-                this._makeMove(move);
-            }
-        }
-        return repetition;
+        return this._getRepetitionCount() >= 3;
     }
     isDraw() {
         return (this._halfMoves >= 100 || // 50 moves per side = 100 half moves
@@ -838,7 +848,7 @@ export class Chess {
     isGameOver() {
         return this.isCheckmate() || this.isStalemate() || this.isDraw();
     }
-    moves({ verbose = false, square = undefined, piece = undefined } = {}) {
+    moves({ verbose = false, square = undefined, piece = undefined, } = {}) {
         const moves = this._moves({ square, piece });
         if (verbose) {
             return moves.map((move) => this._makePretty(move));
@@ -1174,6 +1184,7 @@ export class Chess {
          */
         const prettyMove = this._makePretty(moveObj);
         this._makeMove(moveObj);
+        this._positionCounts[prettyMove.after]++;
         return prettyMove;
     }
     _push(move) {
@@ -1274,7 +1285,12 @@ export class Chess {
     }
     undo() {
         const move = this._undoMove();
-        return move ? this._makePretty(move) : null;
+        if (move) {
+            const prettyMove = this._makePretty(move);
+            this._positionCounts[prettyMove.after]--;
+            return prettyMove;
+        }
+        return null;
     }
     _undoMove() {
         const old = this._history.pop();
@@ -1633,6 +1649,7 @@ export class Chess {
                 // reset the end of game marker if making a valid move
                 result = '';
                 this._makeMove(move);
+                this._positionCounts[this.fen()]++;
             }
         }
         /*
