@@ -1191,6 +1191,54 @@ class Chess {
         this._positionCounts[prettyMove.after]++;
         return prettyMove;
     }
+    freeMove(move, usColor, { strict = false } = {}) {
+        /*
+         * The move function can be called with in the following parameters:
+         *
+         * .move('Nxb7')       <- argument is a case-sensitive SAN string
+         *
+         * .move({ from: 'h7', <- argument is a move object
+         *         to :'h8',
+         *         promotion: 'q' })
+         *
+         *
+         * An optional strict argument may be supplied to tell chess.js to
+         * strictly follow the SAN specification.
+         */
+        let moveObj = null;
+        if (typeof move === 'string') {
+            moveObj = this._moveFromSan(move, strict);
+        }
+        else if (typeof move === 'object') {
+            const moves = this._moves();
+            // convert the pretty move object to an ugly move object
+            for (let i = 0, len = moves.length; i < len; i++) {
+                if (move.from === algebraic(moves[i].from) &&
+                    move.to === algebraic(moves[i].to) &&
+                    (!('promotion' in moves[i]) || move.promotion === moves[i].promotion)) {
+                    moveObj = moves[i];
+                    break;
+                }
+            }
+        }
+        // failed to find move
+        if (!moveObj) {
+            if (typeof move === 'string') {
+                throw new Error(`Invalid move: ${move}`);
+            }
+            else {
+                throw new Error(`Invalid move: ${JSON.stringify(move)}`);
+            }
+        }
+        /*
+         * need to make a copy of move because we can't generate SAN after the move
+         * is made
+         */
+        const prettyMove = this._makePretty(moveObj);
+        this._makeFreeMove(moveObj, usColor);
+        this._positionCounts[prettyMove.after]++;
+        return prettyMove;
+    }
     _push(move) {
         this._history.push({
             move,
@@ -1204,6 +1252,91 @@ class Chess {
     }
     _makeMove(move) {
         const us = this._turn;
+        const them = swapColor(us);
+        this._push(move);
+        this._board[move.to] = this._board[move.from];
+        delete this._board[move.from];
+        // if ep capture, remove the captured pawn
+        if (move.flags & BITS.EP_CAPTURE) {
+            if (this._turn === exports.BLACK) {
+                delete this._board[move.to - 16];
+            }
+            else {
+                delete this._board[move.to + 16];
+            }
+        }
+        // if pawn promotion, replace with new piece
+        if (move.promotion) {
+            this._board[move.to] = { type: move.promotion, color: us };
+        }
+        // if we moved the king
+        if (this._board[move.to].type === exports.KING) {
+            this._kings[us] = move.to;
+            // if we castled, move the rook next to the king
+            if (move.flags & BITS.KSIDE_CASTLE) {
+                const castlingTo = move.to - 1;
+                const castlingFrom = move.to + 1;
+                this._board[castlingTo] = this._board[castlingFrom];
+                delete this._board[castlingFrom];
+            }
+            else if (move.flags & BITS.QSIDE_CASTLE) {
+                const castlingTo = move.to + 1;
+                const castlingFrom = move.to - 2;
+                this._board[castlingTo] = this._board[castlingFrom];
+                delete this._board[castlingFrom];
+            }
+            // turn off castling
+            this._castling[us] = 0;
+        }
+        // turn off castling if we move a rook
+        if (this._castling[us]) {
+            for (let i = 0, len = ROOKS[us].length; i < len; i++) {
+                if (move.from === ROOKS[us][i].square &&
+                    this._castling[us] & ROOKS[us][i].flag) {
+                    this._castling[us] ^= ROOKS[us][i].flag;
+                    break;
+                }
+            }
+        }
+        // turn off castling if we capture a rook
+        if (this._castling[them]) {
+            for (let i = 0, len = ROOKS[them].length; i < len; i++) {
+                if (move.to === ROOKS[them][i].square &&
+                    this._castling[them] & ROOKS[them][i].flag) {
+                    this._castling[them] ^= ROOKS[them][i].flag;
+                    break;
+                }
+            }
+        }
+        // if big pawn move, update the en passant square
+        if (move.flags & BITS.BIG_PAWN) {
+            if (us === exports.BLACK) {
+                this._epSquare = move.to - 16;
+            }
+            else {
+                this._epSquare = move.to + 16;
+            }
+        }
+        else {
+            this._epSquare = EMPTY;
+        }
+        // reset the 50 move counter if a pawn is moved or a piece is captured
+        if (move.piece === exports.PAWN) {
+            this._halfMoves = 0;
+        }
+        else if (move.flags & (BITS.CAPTURE | BITS.EP_CAPTURE)) {
+            this._halfMoves = 0;
+        }
+        else {
+            this._halfMoves++;
+        }
+        if (us === exports.BLACK) {
+            this._moveNumber++;
+        }
+        this._turn = them;
+    }
+    _makeFreeMove(move, usColor) {
+        const us = usColor;
         const them = swapColor(us);
         this._push(move);
         this._board[move.to] = this._board[move.from];

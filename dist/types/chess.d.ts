@@ -188,8 +188,16 @@ export declare class Chess {
     }, { strict }?: {
         strict?: boolean;
     }): Move;
+    freeMove(move: string | {
+        from: string;
+        to: string;
+        promotion?: string;
+    }, usColor: Color, { strict }?: {
+        strict?: boolean;
+    }): Move;
     _push(move: InternalMove): void;
     private _makeMove;
+    private _makeFreeMove;
     undo(): Move | null;
     private _undoMove;
     pgn({ newline, maxWidth, }?: {
